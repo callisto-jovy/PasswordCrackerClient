@@ -32,9 +32,10 @@ public class PacketUtil {
                 arguments.add(string.substring(lastIndex, i));
                 i++;
                 lastIndex = i;
-            } else if (i == string.length() - 1) {
+            }
+
+            if (i >= string.length() - 1) {
                 arguments.add(string.substring(lastIndex));
-                break;
             }
             lastChar = cAtIndex;
         }

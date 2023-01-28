@@ -3,42 +3,23 @@ package net.bplaced.abzzezz.util;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.model.FileHeader;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.util.Base64;
 import java.util.List;
 
-public class ZipCracker {
+public class ZipUtil {
 
-    //TODO: Move to input
-    public static final String ZIP_FILE_PATH = "";
-
-    public String bruteForcePassword(int length, char[] password, int position) {
-        String testString;
-
-        for (int i = 0; i < 36; i++) {
-            password[position] = (char) ((i % 36) + 97); //Mutate the character at the position
-
-            if (position == length - 1) {
-                System.out.println(String.valueOf(password));
-                //TODO: Maybe there's a more efficient method than trying to read the bytestream every time (first bytes should be the hash, right?)
-                if (tryReadByteStream(password)) {
-                    return String.valueOf(password);
-                }
-            } else {
-                //Recursively call the function whilst increasing each position --> Moving forward in the string
-                testString = bruteForcePassword(length, password, position + 1);
-                if (testString != null) {
-                    return testString;
-                }
-            }
-        }
-        //Return null
-        return null;
+    public static File createTempZip(final String data) throws IOException {
+        final byte[] bytes = Base64.getDecoder().decode(data);
+        final File file = File.createTempFile("zipCrackerTemp", ".zip");
+        final FileOutputStream fos = new FileOutputStream(file);
+        fos.write(bytes);
+        fos.close();
+        return file;
     }
 
-    public boolean tryReadByteStream(final char[] password) {
-        try (final ZipFile zipFile = new ZipFile(new File(ZIP_FILE_PATH))) {
+    public static boolean tryReadByteStream(final char[] password, final File file) {
+        try (final ZipFile zipFile = new ZipFile(file)) {
             if (zipFile.isEncrypted()) {
                 zipFile.setPassword(password);
             }
@@ -58,7 +39,7 @@ public class ZipCracker {
 
         } catch (IOException e) {
             //TODO: Remove in production.
-            e.printStackTrace();
+           // e.printStackTrace();
             return false;
         }
         return true;

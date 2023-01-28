@@ -1,7 +1,9 @@
-package org.example;
+package net.bplaced.abzzezz;
+
+import net.bplaced.abzzezz.util.client.ReceiverClient;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
+        final ReceiverClient receiverClient = new ReceiverClient("localhost", 5000);
     }
 }
