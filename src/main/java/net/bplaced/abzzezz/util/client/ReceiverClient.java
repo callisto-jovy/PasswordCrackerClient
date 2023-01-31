@@ -14,7 +14,7 @@ import java.util.concurrent.Executors;
 public class ReceiverClient extends Client {
 
     private File localZip;
-    final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    final ExecutorService executorService = Executors.newFixedThreadPool(5);
 
     public ReceiverClient(String pServerIP, int pServerPort) {
         super(pServerIP, pServerPort);
@@ -36,22 +36,22 @@ public class ReceiverClient extends Client {
                 send(new Packet("READY").toString());
                 break;
 
-            case "RANGE":
-                //Receive rage of characters to try for a certain length
-                final int lowerBound = Integer.parseInt(packet.getArguments().get(0));
-                final int upperBound = Integer.parseInt(packet.getArguments().get(1));
-                final int length = Integer.parseInt(packet.getArguments().get(2));
-
-
-                //Start cracking
-                System.out.println("New range given");
+            case "WORDS":
+                final String[] words = packet.getArguments().toArray(String[]::new);
                 executorService.submit(() -> {
-                    final Cracker cracker = new Cracker(lowerBound, upperBound, chars -> ZipUtil.tryReadByteStream(chars, localZip));
-                    final String pw = cracker.bruteForcePassword(length, new char[length], 0);
-                    if (pw != null)
-                        send(new Packet("SUCCESS", pw).toString());
-                    else
-                        sendUnsuccessfulPacket();
+                    boolean success = false;
+                    for (String word : words) {
+                        //Try the initial word:
+                        if (ZipUtil.tryReadByteStream(word.toCharArray(), localZip)) {
+                            System.err.println("SUCCESS!");
+                            send(new Packet("SUCCESS", word).toString());
+                            success = true;
+                            break;
+                        }
+                    }
+                    if (!success) {
+                        send(new Packet("UNSUCCESSFUL WORD").toString());
+                    }
 
                 });
                 break;
@@ -62,11 +62,19 @@ public class ReceiverClient extends Client {
                 this.close();
                 System.exit(0);
                 break;
+            case "RANGE":
+                final int length = Integer.parseInt(packet.getArguments().get(0));
+                //Process bruteforce in the background (for a certain length, todo).
+                executorService.submit(() -> {
+                    System.out.println("Executing bruteforce for length " + length);
+                    final Cracker cracker = new Cracker(chars -> ZipUtil.tryReadByteStream(chars, localZip));
+                    final String pw = cracker.bruteForcePassword(length, new char[length], 0);
+                    if (pw != null) {
+                        send(new Packet("SUCCESS", pw).toString());
+                    } else
+                        send(new Packet("UNSUCCESSFUL RANGE", String.valueOf(length)).toString());
+                });
+                break;
         }
-    }
-
-
-    private void sendUnsuccessfulPacket() {
-        send(new Packet("UNSUCCESSFUL").toString());
     }
 }
